@@ -4,3 +4,5 @@
 /config/app.php
 /tmp/*
 /logs/*
+/.sass-cache
+/.sass-cache/*
