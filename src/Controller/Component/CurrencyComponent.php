@@ -108,6 +108,9 @@ class CurrencyComponent extends Component {
 			else $result[$currency['@name']] = $currency['@rate'];
 		}
 
+		// Sort the arrays alphabetically according to full names
+		if ($onlyNames == true) asort($result);
+
 		return $result;
 	}
 

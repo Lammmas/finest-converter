@@ -1,0 +1,15 @@
+// Import Bootstrap
+@import "bootstrap/bootstrap";
+// Import custom Bootstrap variables
+@import "variables/bootstrap_variables";
+
+.form-control.readonly {
+	background-color: white;
+	cursor: default;
+}
+
+.scroll-dropdown {
+	max-height: 325px;
+	overflow: hidden;
+	overflow-y: visible;
+}

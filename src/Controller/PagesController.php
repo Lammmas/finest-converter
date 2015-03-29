@@ -2,11 +2,9 @@
 /**
  * CakePHP(tm) : Rapid Development Framework (http://cakephp.org)
  * Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
- *
  * Licensed under The MIT License
  * For full copyright and license information, please see the LICENSE.txt
  * Redistributions of files must retain the above copyright notice.
- *
  * @copyright Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
  * @link      http://cakephp.org CakePHP(tm) Project
  * @since     0.2.9
@@ -20,46 +18,49 @@ use Cake\View\Exception\MissingTemplateException;
 
 /**
  * Static content controller
- *
  * This controller will render views from Template/Pages/
- *
  * @link http://book.cakephp.org/3.0/en/controllers/pages-controller.html
  */
-class PagesController extends AppController
-{
+class PagesController extends AppController {
+	public function initialize() {
+		parent::initialize();
 
-    /**
-     * Displays a view
-     *
-     * @return void|\Cake\Network\Response
-     * @throws \Cake\Network\Exception\NotFoundException When the view file could not
-     *   be found or \Cake\View\Exception\MissingTemplateException in debug mode.
-     */
-    public function display()
-    {
-        $path = func_get_args();
+		$this->loadComponent('Cookie', ['expiry' => '1 month']);
+		$this->Cookie->configKey('History', 'encryption', false);
+	}
 
-        $count = count($path);
-        if (!$count) {
-            return $this->redirect('/');
-        }
-        $page = $subpage = null;
+	/**
+	 * Displays a view
+	 * @return void|\Cake\Network\Response
+	 * @throws \Cake\Network\Exception\NotFoundException When the view file could not
+	 *   be found or \Cake\View\Exception\MissingTemplateException in debug mode.
+	 */
+	public function display() {
+		$path = func_get_args();
 
-        if (!empty($path[0])) {
-            $page = $path[0];
-        }
-        if (!empty($path[1])) {
-            $subpage = $path[1];
-        }
-        $this->set(compact('page', 'subpage'));
+		$count = count($path);
+		if (!$count) {
+			return $this->redirect('/');
+		}
+		$page = $subpage = null;
 
-        try {
-            $this->render(implode('/', $path));
-        } catch (MissingTemplateException $e) {
-            if (Configure::read('debug')) {
-                throw $e;
-            }
-            throw new NotFoundException();
-        }
-    }
+		if (!empty($path[0])) {
+			$page = $path[0];
+		}
+		if (!empty($path[1])) {
+			$subpage = $path[1];
+		}
+		$this->set(compact('page', 'subpage'));
+
+		if ($this->Cookie->check("History")) $this->set("history", array_reverse($this->Cookie->read("History")));
+
+		try {
+			$this->render(implode('/', $path));
+		} catch (MissingTemplateException $e) {
+			if (Configure::read('debug')) {
+				throw $e;
+			}
+			throw new NotFoundException();
+		}
+	}
 }

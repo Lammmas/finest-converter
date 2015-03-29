@@ -6,7 +6,6 @@
 namespace App\Controller;
 
 use Cake\Core\Configure;
-use Cake\Error\Debugger;
 use Cake\Event\Event;
 use DateTime;
 
@@ -17,6 +16,8 @@ class ApiController extends AppController {
 		$this->loadComponent('RequestHandler');
 		$this->loadComponent('Currency');
 		$this->loadComponent('Cookie', ['expiry' => '1 month']);
+
+		$this->Cookie->configKey('History', 'encryption', false);
 	}
 
 	public function beforeFilter(Event $event) {
@@ -32,7 +33,7 @@ class ApiController extends AppController {
 	 */
 	public function currencies() {
 		// Either read or fetch, write and read from cache the currency names in an associated array
-		return $this->Currency->getCurrencies();
+		$this->set("content", json_encode($this->Currency->getCurrencies()));
 	}
 
 	/**
@@ -46,13 +47,24 @@ class ApiController extends AppController {
 		$result = ['status' => 'error'];
 		$error = false;
 
+		if ($this->request->is(["ajax", "post", "put"])) {
+			list($amount, $from, $to, $time) = $this->parsePost();
+		}
+
+		$from = strtoupper($from);
+		$to = strtoupper($to);
+
+		if (!is_numeric($amount) || $amount <= 0) {
+			$error = true;
+			$result['result'] = $amount == null ? "No amount sent" : $amount . " is not a valid number";
+		}
+
 		// Make sure date is in a supported format
 		if (strpos($time, "/") !== false) {
 			$date = DateTime::createFromFormat('m/d/Y', $time);
 			$time = $date->format("Y-m-d");
 		} else if (strpos($time, ".") !== false) {
 			$date = DateTime::createFromFormat('d.m.Y', $time);
-			Debugger::dump($date);
 			$time = $date->format("Y-m-d");
 		}
 
@@ -62,12 +74,13 @@ class ApiController extends AppController {
 			$result['result'] = "Incorrect date";
 		}
 
-		if (!$error) {
-			if ($this->request->is(["ajax", "post", "put"])) {
-				$this->disableCache();
-				list($amount, $from, $to, $time) = $this->parsePost();
-			}
+		$currencies = $this->Currency->getCurrencies();
+		if (!array_key_exists($from, $currencies) || !array_key_exists($to, $currencies)) {
+			$error = true;
+			$result['result'] = "Invalid currency code";
+		}
 
+		if (!$error) {
 			$calc = $this->Currency->calculate($amount, $from, $to, $time);
 
 			if (!is_string($calc)) {
@@ -75,13 +88,36 @@ class ApiController extends AppController {
 			}
 
 			$result['result'] = $calc;
+
+			if ($this->Cookie->check("History")) {
+				$history = $this->Cookie->read("History");
+				if (is_null($history) || $history == "") $history = []; // Just to make sure that history is initialized
+			} else $history = [];
+
+
+			$history[] = array_merge(
+				[
+					'amount' => $amount,
+					'from'   => $from,
+					'to'     => $to,
+					'time'   => $time,
+				],
+				$calc
+			);
+
+			$this->Cookie->write("History", $history);
 		}
 
 		$this->set("content", json_encode($result));
 	}
 
+	/**
+	 * Helper functin for if the request is not made with GET parameters but with JSON parameters
+	 *
+	 * @return array    ex. ["amount" => 1.59, "from" => "USD", "to" => "EUR", "time" => "2010-12-30"]
+	 */
 	private function parsePost() {
-		$data = $this->request->input('json_decode');
+		$data = $this->request->input('json_decode', true);
 
 		// Setting the default values, in case something is missing
 		$data = array_merge(
