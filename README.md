@@ -9,7 +9,10 @@ Converts inputted currencies into selected currencies via jQuery AJAX calls to t
 Requirements
 ------------
 
-- PHP 5.5+
+- PHP 5.4.16+
+- HTTP server, ex. Apache, with mod_rewrite enabled
+- mbstring extension
+- intl extension
 
 How do I install it?
 --------------------
